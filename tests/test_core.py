@@ -126,3 +126,46 @@ def test_search_player_prefers_active():
         from src.stats import _search_player
         result = _search_player("player")
         assert result["id"] == 2
+
+
+# --- standings tests ---
+
+def test_format_division_output():
+    """_format_division should include team name, W, L columns."""
+    from src.standings import _format_division
+    teams = [
+        {"team": {"name": "New York Yankees"}, "wins": 90, "losses": 60,
+         "winningPercentage": ".600", "gamesBack": "0.0"},
+        {"team": {"name": "Boston Red Sox"}, "wins": 80, "losses": 70,
+         "winningPercentage": ".533", "gamesBack": "10.0"},
+    ]
+    output = _format_division("American League East", teams)
+    assert "American League East" in output
+    assert "New York Yankees" in output
+    assert "90" in output
+    assert "Boston Red Sox" in output
+
+
+def test_format_division_first_place_shows_dash():
+    """First place team should show '-' for games back."""
+    from src.standings import _format_division
+    teams = [
+        {"team": {"name": "Los Angeles Dodgers"}, "wins": 95, "losses": 55,
+         "winningPercentage": ".633", "gamesBack": "0.0"},
+    ]
+    output = _format_division("National League West", teams)
+    assert "-" in output
+
+
+def test_fetch_standings_calls_correct_url():
+    """_fetch_standings should call the MLB standings endpoint."""
+    from src.standings import _fetch_standings
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"records": []}
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("src.standings.requests.get", return_value=mock_resp) as mock_get:
+        result = _fetch_standings(2024)
+        assert result == []
+        call_url = mock_get.call_args[0][0]
+        assert "standings" in call_url
