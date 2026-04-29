@@ -9,7 +9,6 @@ BATTING_STATS = {"HR", "AVG", "RBI", "OBP", "SLG", "OPS", "SB", "H", "R"}
 PITCHING_STATS = {"ERA", "SO", "W", "WHIP", "SV", "IP"}
 ALL_STATS = BATTING_STATS | PITCHING_STATS
 
-# Mapping CLI stat names to MLB Stats API statistic names
 STAT_MAP = {
     "HR":   "homeRuns",
     "AVG":  "battingAverage",
@@ -26,6 +25,24 @@ STAT_MAP = {
     "WHIP": "walksAndHitsPerInningPitched",
     "SV":   "saves",
     "IP":   "inningsPitched",
+}
+
+STAT_LABELS = {
+    "HR":   "Home Runs",
+    "AVG":  "Batting Average",
+    "RBI":  "Runs Batted In",
+    "OBP":  "On-Base Percentage",
+    "SLG":  "Slugging Percentage",
+    "OPS":  "On-Base + Slugging",
+    "SB":   "Stolen Bases",
+    "H":    "Hits",
+    "R":    "Runs",
+    "ERA":  "Earned Run Average",
+    "SO":   "Strikeouts",
+    "W":    "Wins",
+    "WHIP": "Walks + Hits per Inning",
+    "SV":   "Saves",
+    "IP":   "Innings Pitched",
 }
 
 
@@ -55,10 +72,12 @@ def show_leaders(stat: str, top: int = 10, season: int = 2026) -> None:
             f"Pitching: {sorted(PITCHING_STATS)}."
         )
 
+    stat_type = "Batting" if stat in BATTING_STATS else "Pitching"
+    full_label = STAT_LABELS[stat]
     leaders = _fetch_leaders(stat, season, top)
 
-    print(f"\nMLB Leaders — {stat} ({season})")
-    print("═" * 40)
+    print(f"\nMLB {stat_type} Leaders — {full_label} ({season})")
+    print("═" * 55)
     print(f"  {'#':<4} {'Player':<25} {'Team':<20} {stat:>6}")
     print("  " + "─" * 58)
 
