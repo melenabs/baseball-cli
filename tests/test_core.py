@@ -7,41 +7,91 @@ from src.leaders import show_leaders, ALL_STATS
 from src.stats import _format_hitting, _format_pitching
 
 
+# --- helpers ---
+
+def _mock_schedule_response():
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"dates": []}
+    mock_resp.raise_for_status = MagicMock()
+    return mock_resp
+
+def _mock_leaders_response(value="30"):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "leagueLeaders": [{"leaders": [{
+            "rank": 1,
+            "person": {"fullName": "Test Player"},
+            "team": {"name": "Test Team"},
+            "value": value,
+        }]}]
+    }
+    mock_resp.raise_for_status = MagicMock()
+    return mock_resp
+
+
 # --- schedule tests ---
 
 def test_valid_team_abbreviation():
-    show_schedule("NYY")
+    with patch("src.schedule.requests.get", return_value=_mock_schedule_response()):
+        show_schedule("NYY")
 
 def test_invalid_team_raises():
     with pytest.raises(ValueError, match="Unknown team abbreviation"):
         show_schedule("XYZ")
 
 def test_team_is_case_insensitive():
-    show_schedule("nyy")
-    show_schedule("lad")
+    with patch("src.schedule.requests.get", return_value=_mock_schedule_response()):
+        show_schedule("nyy")
+        show_schedule("lad")
 
 def test_all_30_teams_valid():
-    for team in VALID_TEAMS:
-        show_schedule(team)
+    with patch("src.schedule.requests.get", return_value=_mock_schedule_response()):
+        for team in VALID_TEAMS:
+            show_schedule(team)
+
+def test_fetch_schedule_calls_correct_url():
+    from src.schedule import _fetch_schedule
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"dates": []}
+    mock_resp.raise_for_status = MagicMock()
+    with patch("src.schedule.requests.get", return_value=mock_resp) as mock_get:
+        result = _fetch_schedule(147, "2026-04-01", "2026-04-10")
+        assert result == []
+        assert "schedule" in mock_get.call_args[0][0]
+
+def test_format_game_final():
+    from src.schedule import _format_game
+    game = {
+        "gameDate": "2026-04-28T18:05:00Z",
+        "status": {"detailedState": "Final"},
+        "teams": {
+            "away": {"team": {"name": "Boston Red Sox"}, "score": 3},
+            "home": {"team": {"name": "New York Yankees"}, "score": 5},
+        }
+    }
+    output = _format_game(game, "NYY")
+    assert "Final" in output and "3-5" in output
+
+def test_format_game_upcoming():
+    from src.schedule import _format_game
+    game = {
+        "gameDate": "2026-04-30T18:05:00Z",
+        "status": {"detailedState": "Scheduled"},
+        "teams": {
+            "away": {"team": {"name": "Boston Red Sox"}, "score": None},
+            "home": {"team": {"name": "New York Yankees"}, "score": None},
+        }
+    }
+    output = _format_game(game, "NYY")
+    assert "Boston Red Sox" in output and "New York Yankees" in output
+
+def test_show_schedule_no_games(capsys):
+    with patch("src.schedule.requests.get", return_value=_mock_schedule_response()):
+        show_schedule("NYY")
+    assert "No games found" in capsys.readouterr().out
 
 
 # --- leaders tests ---
-
-def _mock_leaders_response(value="30"):
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {
-        "leagueLeaders": [{
-            "leaders": [{
-                "rank": 1,
-                "person": {"fullName": "Test Player"},
-                "team": {"name": "Test Team"},
-                "value": value,
-            }]
-        }]
-    }
-    mock_resp.raise_for_status = MagicMock()
-    return mock_resp
-
 
 def test_valid_stat():
     with patch("src.leaders.requests.get", return_value=_mock_leaders_response()):
@@ -68,8 +118,7 @@ def test_fetch_leaders_calls_correct_url():
     mock_resp.json.return_value = {"leagueLeaders": [{"leaders": []}]}
     mock_resp.raise_for_status = MagicMock()
     with patch("src.leaders.requests.get", return_value=mock_resp) as mock_get:
-        result = _fetch_leaders("HR", 2026, 10)
-        assert result == []
+        assert _fetch_leaders("HR", 2026, 10) == []
         assert "leaders" in mock_get.call_args[0][0]
 
 def test_fetch_leaders_empty_response():
@@ -84,11 +133,10 @@ def test_show_leaders_formats_output(capsys):
     with patch("src.leaders.requests.get", return_value=_mock_leaders_response("58")):
         show_leaders("HR", top=1)
     captured = capsys.readouterr()
-    assert "Test Player" in captured.out
-    assert "58" in captured.out
+    assert "Test Player" in captured.out and "58" in captured.out
 
 
-# --- player stats formatting tests ---
+# --- player stats tests ---
 
 def test_format_hitting_all_fields():
     stats = {
