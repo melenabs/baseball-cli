@@ -18,7 +18,7 @@ def build_parser():
     # player stats
     player_p = subparsers.add_parser("player", help="Look up a player's season stats")
     player_p.add_argument("name", type=str, help='Player name, e.g. "Shohei Ohtani"')
-    player_p.add_argument("--year", type=int, default=2024, help="Season year (default: 2024)")
+    player_p.add_argument("--year", type=int, default=2026, help="Season year (default: 2024)")
 
     # standings
     subparsers.add_parser("standings", help="Current MLB standings by division")
